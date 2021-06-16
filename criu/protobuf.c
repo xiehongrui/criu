@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <ctype.h>
+#include <time.h>
 
 #include <google/protobuf-c/protobuf-c.h>
 
@@ -35,6 +36,27 @@ static char *__image_name(struct cr_img *img, char *image_path, size_t image_pat
 	return NULL;
 }
 
+static inline long duration_in_ms(struct timespec* start, struct timespec* end)
+{
+	long result;
+	
+	result = 1000*(end->tv_sec - start->tv_sec) + (end->tv_nsec - start->tv_nsec)/1000000;
+	return result;
+}
+
+static long duration_in_ns(struct timespec* start, struct timespec* end)
+{
+	static long accumulate = 0;
+	long result;
+	
+	result = 1000000000*(end->tv_sec - start->tv_sec) + (end->tv_nsec - start->tv_nsec);
+	accumulate += result;
+	#if 0
+		pr_info("Accumulation time: %ld\n", accumulate);
+	#endif
+	return result;
+}
+
 /*
  * Reads PB record (header + packed object) from file @fd and unpack
  * it with @unpack procedure to the pointer @pobj
@@ -53,6 +75,10 @@ int do_pb_read_one(struct cr_img *img, void **pobj, int type, bool eof)
 	void *buf = (void *)&local;
 	u32 size;
 	int ret;
+	long duration;
+	struct timespec start, end;
+
+	clock_gettime(CLOCK_REALTIME, &start);
 
 	if (!cr_pb_descs[type].pb_desc) {
 		pr_err("Wrong object requested %d on %s\n",
@@ -112,6 +138,10 @@ int do_pb_read_one(struct cr_img *img, void **pobj, int type, bool eof)
 err:
 	if (buf != (void *)&local)
 		xfree(buf);
+
+	clock_gettime(CLOCK_REALTIME, &end);
+	duration = duration_in_ns(&start, &end);
+	pr_info("%s duration in ns: %ld\n", __func__, duration);
 
 	return ret;
 }
@@ -208,9 +238,13 @@ int collect_image(struct collect_image_info *cinfo)
 	struct cr_img *img;
 	void *(*o_alloc)(size_t size) = malloc;
 	void (*o_free)(void *ptr) = free;
+	long duration;
+	struct timespec start, end;
 
 	pr_info("Collecting %d/%d (flags %x)\n",
 			cinfo->fd_type, cinfo->pb_type, cinfo->flags);
+
+	clock_gettime(CLOCK_REALTIME, &start);
 
 	img = open_image(cinfo->fd_type, O_RSTR);
 	if (!img)
@@ -252,6 +286,10 @@ int collect_image(struct collect_image_info *cinfo)
 	}
 
 	close_image(img);
+
+	clock_gettime(CLOCK_REALTIME, &end);
+	duration = duration_in_ns(&start, &end);
+	pr_info("%s duration in ns: %ld\n", __func__, duration);
 	pr_debug(" `- ... done\n");
 	return ret;
 }

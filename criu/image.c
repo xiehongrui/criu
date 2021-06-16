@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <sys/stat.h>
+#include <time.h>
 #include "crtools.h"
 #include "cr_options.h"
 #include "imgset.h"
@@ -25,6 +26,19 @@ bool img_common_magic = true;
 TaskKobjIdsEntry *root_ids;
 u32 root_cg_set;
 Lsmtype image_lsm;
+
+static long duration_in_ns(struct timespec* start, struct timespec* end)
+{
+	static long accumulate = 0;
+	long result;
+	
+	result = 1000000000*(end->tv_sec - start->tv_sec) + (end->tv_nsec - start->tv_nsec);
+	accumulate += result;
+	#if 1
+		pr_info("Accumulation time: %ld\n", accumulate);
+	#endif
+	return result;
+}
 
 int check_img_inventory(bool restore)
 {
@@ -326,6 +340,10 @@ struct cr_img *open_image_at(int dfd, int type, unsigned long flags, ...)
 	char path[PATH_MAX];
 	va_list args;
 	bool lazy = false;
+	long duration;
+	struct timespec start, end;
+
+	clock_gettime(CLOCK_REALTIME, &start);
 
 	if (dfd == -1) {
 		dfd = get_service_fd(IMG_FD_OFF);
@@ -355,6 +373,10 @@ struct cr_img *open_image_at(int dfd, int type, unsigned long flags, ...)
 		close_image(img);
 		return NULL;
 	}
+
+	clock_gettime(CLOCK_REALTIME, &end);
+	duration = duration_in_ns(&start, &end);
+	pr_info("%s duration in ns: %ld\n", __func__, duration);
 
 	return img;
 }
