@@ -190,6 +190,7 @@ static int freezer_open(void)
 
 	snprintf(path, sizeof(path), "%s/%s", opts.freeze_cgroup,
 			cgroup_v2 ? freezer_v2 : freezer_v1);
+	pr_info("freezer path: %s", path);
 	fd = open(path, O_RDWR);
 	if (fd < 0) {
 		pr_perror("Unable to open %s", path);
@@ -950,10 +951,12 @@ int collect_pstree(void)
 
 	pr_debug("Detected cgroup V%d freezer\n", cgroup_v2 ? 2 : 1);
 
+	pr_debug("opts.freeze_cgroup: %s\n", opts.freeze_cgroup);
+
 	if (opts.freeze_cgroup && freeze_processes())
 		goto err;
 
-	if (!opts.freeze_cgroup && compel_interrupt_task(pid)) {
+	if (!opts.freeze_cgroup && compel_interrupt_task(pid)) { // we will use compel_interrupt_task when opts.freeze_cgroup==NULL
 		set_cr_errno(ESRCH);
 		goto err;
 	}

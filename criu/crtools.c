@@ -258,7 +258,7 @@ int main(int argc, char *argv[], char *envp[])
 			pr_perror("Failed to exec command %s", opts.exec_cmd[0]);
 			ret = 1;
 		}
-
+		printf("return value: %d\n", ret);
 		return ret != 0;
 	}
 

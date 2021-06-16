@@ -1706,6 +1706,7 @@ static int switch_user_join_ns(struct join_ns *jn)
 
 int join_namespaces(void)
 {
+	// 这个函数应该是让新进程加到用户在命令行里面指定的一些namespace中
 	struct join_ns *jn, *user_jn = NULL;
 	int ret = -1;
 

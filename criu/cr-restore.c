@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <time.h>
 
 #include <fcntl.h>
 
@@ -118,6 +119,25 @@ static int prepare_restorer_blob(void);
 static int prepare_rlimits(int pid, struct task_restore_args *, CoreEntry *core);
 static int prepare_posix_timers(int pid, struct task_restore_args *ta, CoreEntry *core);
 static int prepare_signals(int pid, struct task_restore_args *, CoreEntry *core);
+
+static inline long __attribute__ ((unused)) time_span(struct timespec start, struct timespec end)
+{
+	return ((end.tv_sec - start.tv_sec)*1000000000 + (end.tv_nsec - start.tv_nsec));
+}
+
+static inline void get_time(struct timespec* spec)
+{
+	clock_gettime(CLOCK_REALTIME, spec);
+}
+
+static inline void report_checkpoints(struct timespec* chpts, int index)
+{
+	printf("[");
+	for (int i = 1; i < index; i++) {
+		printf("%ld, ", time_span(chpts[i-1], chpts[i]));
+	}
+	printf("]\n");
+}
 
 /*
  * Architectures can overwrite this function to restore registers that are not
@@ -1486,6 +1506,7 @@ static inline int fork_with_pid(struct pstree_item *item)
 	}
 
 	if (kdat.has_clone3_set_tid) {
+		pr_debug("Reach here %s:%d\n", __FILE__, __LINE__);
 		ret = clone3_with_pid_noasan(restore_task_with_children,
 				&ca, (clone_flags &
 					~(CLONE_NEWNET | CLONE_NEWCGROUP | CLONE_NEWTIME)),
@@ -1503,6 +1524,7 @@ static inline int fork_with_pid(struct pstree_item *item)
 		 * The cgroup namespace is also unshared explicitly in the
 		 * move_in_cgroup(), so drop this flag here as well.
 		 */
+		pr_debug("Reach here %s:%d\n", __FILE__, __LINE__);
 		close_pid_proc();
 		ret = clone_noasan(restore_task_with_children,
 				(clone_flags &
@@ -1752,6 +1774,7 @@ static int create_children_and_session(void)
 
 		BUG_ON(child->born_sid != -1 && getsid(0) != child->born_sid);
 
+		pr_info("Call fork_with_pid in %s %s:%d\n", __func__, __FILE__, __LINE__);
 		ret = fork_with_pid(child);
 		if (ret < 0)
 			return ret;
@@ -1765,6 +1788,7 @@ static int create_children_and_session(void)
 		if (restore_before_setsid(child))
 			continue;
 
+		pr_info("Call fork_with_pid in %s %s:%d\n", __func__, __FILE__, __LINE__);
 		ret = fork_with_pid(child);
 		if (ret < 0)
 			return ret;
@@ -1803,22 +1827,27 @@ static int restore_task_with_children(void *_arg)
 	}
 
 	pid = getpid();
+	pr_info("restore_task_with_children, in process: %d\n", pid);
 	if (vpid(current) != pid) {
 		pr_err("Pid %d do not match expected %d\n", pid, vpid(current));
 		set_task_cr_err(EEXIST);
 		goto err;
 	}
 
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
+
 	if (log_init_by_pid(vpid(current)))
 		return -1;
 
 	if (current->parent == NULL) {
+		pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 		/*
 		 * The root task has to be in its namespaces before executing
 		 * ACT_SETUP_NS scripts, so the root netns has to be created here
 		 */
-		if (root_ns_mask & CLONE_NEWNET) {
+		if (root_ns_mask & CLONE_NEWNET) { // Unreachable in the simple loop testcase
 			struct ns_id *ns = net_get_root_ns();
+			pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 			if (ns->ext_key)
 				ret = net_set_ext(ns);
 			else
@@ -1829,14 +1858,17 @@ static int restore_task_with_children(void *_arg)
 			}
 		}
 
-		if (root_ns_mask & CLONE_NEWTIME) {
+		if (root_ns_mask & CLONE_NEWTIME) { // Unreachable in the simple loop testcase
+			pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 			if (prepare_timens(current->ids->time_ns_id))
 				goto err;
 		} else if (kdat.has_timens) {
+			pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 			if (prepare_timens(0))
 				goto err;
 		}
 
+		pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 		/* Wait prepare_userns */
 		if (restore_finish_ns_stage(CR_STATE_ROOT_TASK, CR_STATE_PREPARE_NAMESPACES) < 0)
 			goto err;
@@ -1844,6 +1876,8 @@ static int restore_task_with_children(void *_arg)
 
 	if (needs_prep_creds(current) && (prepare_userns_creds()))
 		goto err;
+
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
 	/*
 	 * Call this _before_ forking to optimize cgroups
@@ -1854,8 +1888,11 @@ static int restore_task_with_children(void *_arg)
 	if (prepare_task_cgroup(current) < 0)
 		goto err;
 
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
+
 	/* Restore root task */
 	if (current->parent == NULL) {
+		pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 		if (join_namespaces()) {
 			pr_perror("Join namespaces failed");
 			goto err;
@@ -1889,6 +1926,8 @@ static int restore_task_with_children(void *_arg)
 		if (populate_root_fd_off())
 			goto err;
 	}
+
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
 	if (setup_newborn_fds(current))
 		goto err;
@@ -1927,7 +1966,10 @@ static int restore_task_with_children(void *_arg)
 
 	restore_pgid();
 
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
+
 	if (current->parent == NULL) {
+		pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 		/*
 		 * Wait when all tasks passed the CR_STATE_FORKING stage.
 		 * The stage was started by criu, but now it waits for
@@ -1941,12 +1983,17 @@ static int restore_task_with_children(void *_arg)
 		fini_restore_mntns();
 		__restore_switch_stage(CR_STATE_RESTORE);
 	} else {
+		pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 		if (restore_finish_stage(task_entries, CR_STATE_FORKING) < 0)
 			goto err;
 	}
 
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
+
 	if (restore_one_task(vpid(current), ca->core))
 		goto err;
+
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
 	return 0;
 
@@ -2199,11 +2246,20 @@ static int restore_root_task(struct pstree_item *init)
 	int root_seized = 0;
 	struct pstree_item *item;
 
+	static struct timespec chpts[100];
+	int index = 0;
+
+	get_time(&chpts[index]);
+	index++;
+
 	ret = run_scripts(ACT_PRE_RESTORE);
 	if (ret != 0) {
 		pr_err("Aborting restore due to pre-restore script ret code %d\n", ret);
 		return -1;
 	}
+
+	get_time(&chpts[index]);
+	index++;
 
 	fd = open("/proc", O_DIRECTORY | O_RDONLY);
 	if (fd < 0) {
@@ -2211,9 +2267,15 @@ static int restore_root_task(struct pstree_item *init)
 		return -1;
 	}
 
+	get_time(&chpts[index]);
+	index++;
+
 	ret = install_service_fd(CR_PROC_FD_OFF, fd);
 	if (ret < 0)
 		return -1;
+
+	get_time(&chpts[index]);
+	index++;
 
 	/*
 	 * FIXME -- currently we assume that all the tasks live
@@ -2225,8 +2287,14 @@ static int restore_root_task(struct pstree_item *init)
 	if (prepare_userns_hook())
 		return -1;
 
+	get_time(&chpts[index]);
+	index++;
+
 	if (prepare_namespace_before_tasks())
 		return -1;
+
+	get_time(&chpts[index]);
+	index++;
 
 	if (vpid(init) == INIT_PID) {
 		if (!(root_ns_mask & CLONE_NEWPID)) {
@@ -2241,13 +2309,28 @@ static int restore_root_task(struct pstree_item *init)
 		return -1;
 	}
 
+	get_time(&chpts[index]);
+	index++;
+
 	__restore_switch_stage_nw(CR_STATE_ROOT_TASK);
 
+	get_time(&chpts[index]);
+	index++;
+
 	ret = fork_with_pid(init);
+	pr_info("Function fork_with_pid returns %d\n", ret);
 	if (ret < 0)
 		goto out;
 
+	get_time(&chpts[index]);
+	index++;
+
 	restore_origin_ns_hook();
+
+	get_time(&chpts[index]);
+	index++;
+
+	pr_info("Reach here: %s:%d\n", __FILE__, __LINE__);
 
 	if (rsti(init)->clone_flags & CLONE_PARENT) {
 		struct sigaction act;
@@ -2266,14 +2349,22 @@ static int restore_root_task(struct pstree_item *init)
 		act.sa_flags &= ~SA_NOCLDSTOP;
 		sigaction(SIGCHLD, &act, NULL);
 
+		pr_info("Reach here: %s:%d\n", __FILE__, __LINE__);
+		pr_info("Try to attach to the process %d\n", init->pid->real);
+
 		if (ptrace(PTRACE_SEIZE, init->pid->real, 0, 0)) {
 			pr_perror("Can't attach to init");
 			goto out_kill;
 		}
 	}
 
+	get_time(&chpts[index]);
+	index++;
+
 	if (!root_ns_mask)
-		goto skip_ns_bouncing;
+		goto skip_ns_bouncing; // in simple loop test, we will skip ns bouncing
+
+	pr_info("Reach here: %s:%d\n", __FILE__, __LINE__);
 
 	/*
 	 * uid_map and gid_map must be filled from a parent user namespace.
@@ -2282,18 +2373,26 @@ static int restore_root_task(struct pstree_item *init)
 	if ((root_ns_mask & CLONE_NEWUSER) && prepare_userns(init))
 		goto out_kill;
 
+	pr_info("Reach here: %s:%d\n", __FILE__, __LINE__);
+
 	pr_info("Wait until namespaces are created\n");
 	ret = restore_wait_inprogress_tasks();
 	if (ret)
 		goto out_kill;
 
+	pr_info("Reach here: %s:%d\n", __FILE__, __LINE__);
+
 	ret = run_scripts(ACT_SETUP_NS);
 	if (ret)
 		goto out_kill;
 
+	pr_info("Reach here: %s:%d\n", __FILE__, __LINE__);
+
 	ret = restore_switch_stage(CR_STATE_PREPARE_NAMESPACES);
 	if (ret)
 		goto out_kill;
+
+	pr_info("Reach here: %s:%d\n", __FILE__, __LINE__);
 
 	if (root_ns_mask & CLONE_NEWNS) {
 		mnt_ns_fd = open_proc(init->pid->real, "ns/mnt");
@@ -2301,7 +2400,12 @@ static int restore_root_task(struct pstree_item *init)
 			goto out_kill;
 	}
 
+	pr_info("Reach here: %s:%d\n", __FILE__, __LINE__);
+
 	if (root_ns_mask & opts.empty_ns & CLONE_NEWNET) {
+		
+		pr_info("Reach here: %s:%d\n", __FILE__, __LINE__);
+
 		/*
 		 * Local TCP connections were locked by network_lock_internal()
 		 * on dump and normally should have been C/R-ed by respectively
@@ -2314,6 +2418,8 @@ static int restore_root_task(struct pstree_item *init)
 			goto out_kill;
 	}
 
+	pr_info("Reach here: %s:%d\n", __FILE__, __LINE__);
+
 	ret = run_scripts(ACT_POST_SETUP_NS);
 	if (ret)
 		goto out_kill;
@@ -2322,13 +2428,29 @@ static int restore_root_task(struct pstree_item *init)
 
 skip_ns_bouncing:
 
+	get_time(&chpts[index]);
+	index++;
+
+	pr_info("Reach here: %s:%d\n", __FILE__, __LINE__);
+
 	ret = restore_wait_inprogress_tasks();
+	pr_info("Reach here: %s:%d, restore_wait_inprogress_tasks returns %d\n", __FILE__, __LINE__, ret);
 	if (ret < 0)
 		goto out_kill;
+
+	get_time(&chpts[index]);
+	index++;
+
+	pr_info("Reach here: %s:%d\n", __FILE__, __LINE__);
 
 	ret = apply_memfd_seals();
 	if (ret < 0)
 		goto out_kill;
+
+	get_time(&chpts[index]);
+	index++;
+
+	pr_info("Reach here: %s:%d\n", __FILE__, __LINE__);
 
 	/*
 	 * Zombies die after CR_STATE_RESTORE which is switched
@@ -2340,21 +2462,38 @@ skip_ns_bouncing:
 			task_entries->nr_threads--;
 	}
 
+	get_time(&chpts[index]);
+	index++;
+
+	pr_info("Reach here: %s:%d\n", __FILE__, __LINE__);
+
 	ret = restore_switch_stage(CR_STATE_RESTORE_SIGCHLD);
 	if (ret < 0)
 		goto out_kill;
+
+	get_time(&chpts[index]);
+	index++;
 
 	ret = stop_usernsd();
 	if (ret < 0)
 		goto out_kill;
 
+	get_time(&chpts[index]);
+	index++;
+
 	ret = move_veth_to_bridge();
 	if (ret < 0)
 		goto out_kill;
 
+	get_time(&chpts[index]);
+	index++;
+
 	ret = prepare_cgroup_properties();
 	if (ret < 0)
 		goto out_kill;
+
+	get_time(&chpts[index]);
+	index++;
 
 	if (fault_injected(FI_POST_RESTORE))
 		goto out_kill;
@@ -2366,6 +2505,9 @@ skip_ns_bouncing:
 		write_stats(RESTORE_STATS);
 		goto out_kill;
 	}
+
+	get_time(&chpts[index]);
+	index++;
 
 	/*
 	 * There is no need to call try_clean_remaps() after this point,
@@ -2395,8 +2537,14 @@ skip_ns_bouncing:
 	 */
 	attach_to_tasks(root_seized);
 
+	get_time(&chpts[index]);
+	index++;
+
 	if (restore_switch_stage(CR_STATE_RESTORE_CREDS))
 		goto out_kill_network_unlocked;
+
+	get_time(&chpts[index]);
+	index++;
 
 	timing_stop(TIME_RESTORE);
 
@@ -2420,7 +2568,13 @@ skip_ns_bouncing:
 	if (clear_breakpoints())
 		pr_err("Unable to flush breakpoints\n");
 
-	finalize_restore();
+	get_time(&chpts[index]);
+	index++;
+
+	finalize_restore(); // unmap the parasite and restorer blob
+
+	get_time(&chpts[index]);
+	index++;
 
 	ret = run_scripts(ACT_PRE_RESUME);
 	if (ret)
@@ -2431,9 +2585,15 @@ skip_ns_bouncing:
 
 	fini_cgroup();
 
+	get_time(&chpts[index]);
+	index++;
+
 	/* Detaches from processes and they continue run through sigreturn. */
 	if (finalize_restore_detach())
 		goto out_kill_network_unlocked;
+
+	get_time(&chpts[index]);
+	index++;
 
 	pr_info("Restore finished successfully. Tasks resumed.\n");
 	write_stats(RESTORE_STATS);
@@ -2448,11 +2608,19 @@ skip_ns_bouncing:
 	if (!opts.restore_detach && !opts.exec_cmd)
 		wait(NULL);
 
+	get_time(&chpts[index]);
+	index++;
+
+	report_checkpoints(chpts, index);
+
+	pr_info("Reach here: %s:%d\n", __FILE__, __LINE__);
+
 	return 0;
 
 out_kill_network_unlocked:
 	pr_err("Killing processes because of failure on restore.\nThe Network was unlocked so some data or a connection may have been lost.\n");
 out_kill:
+	pr_info("Reach here: %s:%d\n", __FILE__, __LINE__);
 	/*
 	 * The processes can be killed only when all of them have been created,
 	 * otherwise an external processes can be killed.
@@ -2520,61 +2688,135 @@ int cr_restore_tasks(void)
 {
 	int ret = -1;
 
+	static struct timespec chpts[100];
+	int index = 0;
+
+	int this_pid = 0;
+
+	get_time(&chpts[index]);
+	index++;
+
 	if (init_service_fd())
 		return 1;
+
+	get_time(&chpts[index]);
+	index++;
 
 	if (cr_plugin_init(CR_PLUGIN_STAGE__RESTORE))
 		return -1;
 
+	get_time(&chpts[index]);
+	index++;
+
 	if (check_img_inventory(/* restore = */ true) < 0)
 		goto err;
+
+	get_time(&chpts[index]);
+	index++;
 
 	if (init_stats(RESTORE_STATS))
 		goto err;
 
+	get_time(&chpts[index]);
+	index++;
+
 	if (lsm_check_opts())
 		goto err;
 
+	get_time(&chpts[index]);
+	index++;
+
 	timing_start(TIME_RESTORE);
+
+	get_time(&chpts[index]);
+	index++;
 
 	if (cpu_init() < 0)
 		goto err;
 
+	get_time(&chpts[index]);
+	index++;
+
 	if (vdso_init_restore())
 		goto err;
 
+	get_time(&chpts[index]);
+	index++;
+
 	if (tty_init_restore())
 		goto err;
+
+	get_time(&chpts[index]);
+	index++;
 
 	if (opts.cpu_cap & CPU_CAP_IMAGE) {
 		if (cpu_validate_cpuinfo())
 			goto err;
 	}
 
+	get_time(&chpts[index]);
+	index++;
+
 	if (prepare_task_entries() < 0)
 		goto err;
+
+	get_time(&chpts[index]);
+	index++;
 
 	if (prepare_pstree() < 0)
 		goto err;
 
+	get_time(&chpts[index]);
+	index++;
+
 	if (fdstore_init())
 		goto err;
+
+	get_time(&chpts[index]);
+	index++;
 
 	if (inherit_fd_move_to_fdstore())
 		goto err;
 
+	get_time(&chpts[index]);
+	index++;
+
 	if (crtools_prepare_shared() < 0)
 		goto err;
+
+	get_time(&chpts[index]);
+	index++;
 
 	if (criu_signals_setup() < 0)
 		goto err;
 
+	get_time(&chpts[index]);
+	index++;
+
 	if (prepare_lazy_pages_socket() < 0)
 		goto err;
 
+	get_time(&chpts[index]);
+	index++;
+
+	// printf("reach %s:%d\n", __FILE__, __LINE__);
+
 	ret = restore_root_task(root_item);
+
+	get_time(&chpts[index]);
+	index++;
 err:
+	// printf("reach %s:%d, should we reach here?\n", __FILE__, __LINE__);
 	cr_plugin_fini(CR_PLUGIN_STAGE__RESTORE, ret);
+	// printf("reach %s:%d, should we reach here?\n", __FILE__, __LINE__);
+
+	get_time(&chpts[index]);
+	index++;
+	report_checkpoints(chpts, index);
+
+	this_pid = getpid();
+	printf("%s:%d: pid: %d\n", __FILE__, __LINE__, this_pid);
+
 	return ret;
 }
 
@@ -3488,7 +3730,12 @@ static int sigreturn_restore(pid_t pid, struct task_restore_args *task_args, uns
 
 	sigset_t blockmask;
 
+	int this_pid;
+
+	this_pid = getpid();
+
 	pr_info("Restore via sigreturn\n");
+	pr_info("This is process %d\n", this_pid);
 
 	/* pr_info_vma_list(&self_vma_list); */
 
@@ -3840,10 +4087,15 @@ static int sigreturn_restore(pid_t pid, struct task_restore_args *task_args, uns
 		task_args->clone_restore_fn,
 		task_args->thread_args);
 
+	pr_info("%s:%d: Reach here\n", __FILE__, __LINE__);
+
 	/*
 	 * An indirect call to task_restore, note it never returns
 	 * and restoring core is extremely destructive.
 	 */
+
+	// this_pid = getpid();
+	pr_info("%s:%d: pid: %d\n", __FILE__, __LINE__, this_pid);
 
 	JUMP_TO_RESTORER_BLOB(new_sp, restore_task_exec_start, task_args);
 

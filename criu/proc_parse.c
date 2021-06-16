@@ -2385,7 +2385,7 @@ int parse_threads(int pid, struct pid **_t, int *_n)
 	if (*_t)
 		t = *_t;
 
-	dir = opendir_proc(pid, "task");
+	dir = opendir_proc(pid, "task"); // get the thread information by read the directory /proc/<pid>/task
 	if (!dir)
 		return -1;
 

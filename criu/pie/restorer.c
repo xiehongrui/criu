@@ -1402,6 +1402,8 @@ long __export_restore_task(struct task_restore_args *args)
 	rt_sigaction_t act;
 	bool has_vdso_proxy;
 
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
+
 	bootstrap_start = args->bootstrap_start;
 	bootstrap_len	= args->bootstrap_len;
 
@@ -1556,6 +1558,8 @@ long __export_restore_task(struct task_restore_args *args)
 	 * Now read the contents (if any)
 	 */
 
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
+
 	rio = args->vma_ios;
 	for (i = 0; i < args->vma_ios_n; i++) {
 		struct iovec *iovs = rio->iovs;
@@ -1602,8 +1606,12 @@ long __export_restore_task(struct task_restore_args *args)
 		rio = ((void *)rio) + RIO_SIZE(rio->nr_iovs);
 	}
 
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
+
 	if (args->vma_ios_fd != -1)
 		sys_close(args->vma_ios_fd);
+
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
 	/*
 	 * Proxify vDSO.
@@ -1616,6 +1624,8 @@ long __export_restore_task(struct task_restore_args *args)
 	/* unmap rt-vdso with restorer blob after restore's finished */
 	if (!has_vdso_proxy)
 		vdso_rt_size = 0;
+
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
 	/*
 	 * Walk though all VMAs again to drop PROT_WRITE
@@ -1636,6 +1646,8 @@ long __export_restore_task(struct task_restore_args *args)
 			     vma_entry->prot);
 	}
 
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
+
 	/*
 	 * Now when all VMAs are in their places time to set
 	 * up AIO rings.
@@ -1644,6 +1656,8 @@ long __export_restore_task(struct task_restore_args *args)
 	for (i = 0; i < args->rings_n; i++)
 		if (restore_aio_ring(&args->rings[i]) < 0)
 			goto core_restore_end;
+
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
 	/*
 	 * Finally restore madivse() bits
@@ -1671,6 +1685,8 @@ long __export_restore_task(struct task_restore_args *args)
 			}
 		}
 	}
+
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
 	/*
 	 * Tune up the task fields.
@@ -1840,6 +1856,8 @@ long __export_restore_task(struct task_restore_args *args)
 			sys_close(fd);
 	}
 
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
+
 	restore_rlims(args);
 
 	ret = create_posix_timers(args);
@@ -1855,6 +1873,8 @@ long __export_restore_task(struct task_restore_args *args)
 	}
 
 	pr_info("%ld: Restored\n", sys_getpid());
+
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
 	restore_finish_stage(task_entries_local, CR_STATE_RESTORE);
 
@@ -1892,6 +1912,8 @@ long __export_restore_task(struct task_restore_args *args)
 		goto core_restore_end;
 	}
 
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
+
 	ret = restore_signals(args->siginfo, args->siginfo_n, true);
 	if (ret)
 		goto core_restore_end;
@@ -1903,6 +1925,8 @@ long __export_restore_task(struct task_restore_args *args)
 	restore_finish_stage(task_entries_local, CR_STATE_RESTORE_SIGCHLD);
 
 	rst_tcp_socks_all(args);
+
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
 	/*
 	 * Make sure it's before creds, since it's privileged
@@ -1926,6 +1950,8 @@ long __export_restore_task(struct task_restore_args *args)
 
 	restore_finish_stage(task_entries_local, CR_STATE_RESTORE_CREDS);
 
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
+
 	if (ret)
 		BUG();
 
@@ -1933,7 +1959,10 @@ long __export_restore_task(struct task_restore_args *args)
 	futex_wait_while_gt(&thread_inprogress, 1);
 
 	sys_close(args->proc_fd);
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 	std_log_set_fd(-1);
+
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
 	/*
 	 * The code that prepared the itimers makes sure that the
@@ -1959,6 +1988,8 @@ long __export_restore_task(struct task_restore_args *args)
 	 * Sigframe stack.
 	 */
 	new_sp = (long)rt_sigframe + RT_SIGFRAME_OFFSET(rt_sigframe);
+
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
 	/*
 	 * Prepare the stack and call for sigreturn,
