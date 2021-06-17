@@ -1803,6 +1803,12 @@ static int restore_task_with_children(void *_arg)
 	pid_t pid;
 	int ret;
 
+	static struct timespec chpts[100];
+	int index = 0;
+	
+	get_time(&chpts[index]);
+	index++;
+
 	current = ca->item;
 
 	if (current != root_item) {
@@ -1990,6 +1996,11 @@ static int restore_task_with_children(void *_arg)
 
 	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
+	get_time(&chpts[index]);
+	index++;
+
+	report_checkpoints(chpts, index);
+	
 	if (restore_one_task(vpid(current), ca->core))
 		goto err;
 
