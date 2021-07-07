@@ -1393,7 +1393,7 @@ long __export_restore_task(struct task_restore_args *args)
 	int i;
 	VmaEntry *vma_entry;
 	unsigned long va;
-	struct restore_vma_io *rio;
+	// struct restore_vma_io *rio;
 	struct rt_sigframe *rt_sigframe;
 	struct prctl_mm_map prctl_map;
 	unsigned long new_sp;
@@ -1449,6 +1449,8 @@ long __export_restore_task(struct task_restore_args *args)
 		pr_debug("lazy-pages: uffd %d\n", args->uffd);
 	}
 
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
+
 	/*
 	 * Park vdso/vvar in a safe place if architecture doesn't support
 	 * mapping them with arch_prctl().
@@ -1469,15 +1471,21 @@ long __export_restore_task(struct task_restore_args *args)
 			goto core_restore_end;
 	}
 
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
+
 	if (unmap_old_vmas((void *)args->premmapped_addr, args->premmapped_len,
 				bootstrap_start, bootstrap_len, args->task_size))
 		goto core_restore_end;
+
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
 	/* Map vdso that wasn't parked */
 	if (args->can_map_vdso && (map_vdso(args, args->compatible_mode) < 0))
 		goto core_restore_end;
 
 	vdso_update_gtod_addr(&args->vdso_maps_rt);
+
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
 	/* Shift private vma-s to the left */
 	for (i = 0; i < args->vmas_n; i++) {
@@ -1496,6 +1504,8 @@ long __export_restore_task(struct task_restore_args *args)
 			goto core_restore_end;
 	}
 
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
+
 	/* Shift private vma-s to the right */
 	for (i = args->vmas_n - 1; i >= 0; i--) {
 		vma_entry = args->vmas + i;
@@ -1512,6 +1522,8 @@ long __export_restore_task(struct task_restore_args *args)
 		if (vma_remap(vma_entry, args->uffd))
 			goto core_restore_end;
 	}
+
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
 	if (args->uffd > -1) {
 		/* re-enable THP if we disabled it previously */
@@ -1532,6 +1544,8 @@ long __export_restore_task(struct task_restore_args *args)
 		 */
 		sys_close(args->uffd);
 	}
+
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
 	/*
 	 * OK, lets try to map new one.
@@ -1560,6 +1574,7 @@ long __export_restore_task(struct task_restore_args *args)
 
 	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
+	#if 0
 	rio = args->vma_ios;
 	for (i = 0; i < args->vma_ios_n; i++) {
 		struct iovec *iovs = rio->iovs;
@@ -1605,6 +1620,7 @@ long __export_restore_task(struct task_restore_args *args)
 
 		rio = ((void *)rio) + RIO_SIZE(rio->nr_iovs);
 	}
+	#endif
 
 	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 

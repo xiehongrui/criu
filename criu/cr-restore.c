@@ -1999,7 +1999,9 @@ static int restore_task_with_children(void *_arg)
 	get_time(&chpts[index]);
 	index++;
 
+	printf("Report checkpoint in %s: %s:%d\n", __func__, __FILE__, __LINE__);
 	report_checkpoints(chpts, index);
+	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 	
 	if (restore_one_task(vpid(current), ca->core))
 		goto err;
@@ -2622,6 +2624,7 @@ skip_ns_bouncing:
 	get_time(&chpts[index]);
 	index++;
 
+	printf("Report checkpoint in %s: %s:%d\n", __func__, __FILE__, __LINE__);
 	report_checkpoints(chpts, index);
 
 	pr_info("Reach here: %s:%d\n", __FILE__, __LINE__);
@@ -2823,6 +2826,8 @@ err:
 
 	get_time(&chpts[index]);
 	index++;
+
+	printf("Report checkpoint in %s: %s:%d\n", __func__, __FILE__, __LINE__);
 	report_checkpoints(chpts, index);
 
 	this_pid = getpid();
