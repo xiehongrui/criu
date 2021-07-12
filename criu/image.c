@@ -482,6 +482,7 @@ static int do_open_image(struct cr_img *img, int dfd, int type, unsigned long of
 	}
 
 	img->_x.fd = ret;
+	pr_info("open image %s with fd %d\n", path, ret);
 	if (oflags & O_NOBUF)
 		bfd_setraw(&img->_x);
 	else {

@@ -717,9 +717,10 @@ static unsigned long restore_mapping(VmaEntry *vma_entry)
 	 * that mechanism as it causes the process to be charged for memory
 	 * immediately upon mmap, not later upon preadv().
 	 */
-	pr_debug("\tmmap(%"PRIx64" -> %"PRIx64", %x %x %d)\n",
+	pr_debug("\tmmap(%"PRIx64" -> %"PRIx64", %x %x %d %lx)\n",
 			vma_entry->start, vma_entry->end,
-			prot, flags, (int)vma_entry->fd);
+			prot, flags, (int)vma_entry->fd, vma_entry->pgoff);
+	
 	/*
 	 * Should map memory here. Note we map them as
 	 * writable since we're going to restore page
@@ -1393,7 +1394,7 @@ long __export_restore_task(struct task_restore_args *args)
 	int i;
 	VmaEntry *vma_entry;
 	unsigned long va;
-	// struct restore_vma_io *rio;
+	struct restore_vma_io *rio;
 	struct rt_sigframe *rt_sigframe;
 	struct prctl_mm_map prctl_map;
 	unsigned long new_sp;
@@ -1574,17 +1575,21 @@ long __export_restore_task(struct task_restore_args *args)
 
 	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
-	#if 0
 	rio = args->vma_ios;
 	for (i = 0; i < args->vma_ios_n; i++) {
 		struct iovec *iovs = rio->iovs;
 		int nr = rio->nr_iovs;
 		ssize_t r;
+		int i;
 
 		while (nr) {
 			pr_debug("Preadv %lx:%d... (%d iovs)\n",
 					(unsigned long)iovs->iov_base,
 					(int)iovs->iov_len, nr);
+			pr_debug("Preadv %d %p %d %lx\n", args->vma_ios_fd, iovs, nr, rio->off);
+			for (i = 0; i < nr; i++) {
+				pr_debug("Read to %p length %lx\n", iovs[i].iov_base, iovs[i].iov_len);
+			}
 			r = sys_preadv(args->vma_ios_fd, iovs, nr, rio->off);
 			if (r < 0) {
 				pr_err("Can't read pages data (%d)\n", (int)r);
@@ -1620,7 +1625,6 @@ long __export_restore_task(struct task_restore_args *args)
 
 		rio = ((void *)rio) + RIO_SIZE(rio->nr_iovs);
 	}
-	#endif
 
 	pr_info("Reach here in function %s: %s:%d\n", __func__, __FILE__, __LINE__);
 
