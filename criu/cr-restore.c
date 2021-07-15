@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <time.h>
 
 #include <fcntl.h>
 
@@ -2519,6 +2520,12 @@ int prepare_dummy_task_state(struct pstree_item *pi)
 int cr_restore_tasks(void)
 {
 	int ret = -1;
+	struct timespec chpt;
+
+	clock_gettime(CLOCK_REALTIME, &chpt);
+	pr_info("Start restore function %s, %s:%d, realtime: %ld %ld\n", 
+	        __func__, __FILE__, __LINE__,
+			chpt.tv_sec, chpt.tv_nsec);
 
 	if (init_service_fd())
 		return 1;

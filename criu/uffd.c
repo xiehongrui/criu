@@ -747,10 +747,13 @@ static int ud_open(int client, struct lazy_pages_info **_lpi)
 	struct lazy_pages_info *lpi;
 	int ret = -1;
 	int pr_flags = PR_TASK;
+	struct timespec chpt;
 
 	lpi = lpi_init();
 	if (!lpi)
 		goto out;
+
+	pr_debug("Wait for fd in function %s, %s:%d\n", __func__, __FILE__, __LINE__);
 
 	/* The "transfer protocol" is first the pid as int and then
 	 * the FD for UFFD */
@@ -774,6 +777,12 @@ static int ud_open(int client, struct lazy_pages_info **_lpi)
 		pr_err("recv_fd error\n");
 		goto out;
 	}
+
+	clock_gettime(CLOCK_REALTIME, &chpt);
+	pr_debug("Start to restore in function %s %s:%d, realtime: %ld %ld\n",
+			__func__, __FILE__, __LINE__,
+			chpt.tv_sec, chpt.tv_nsec);
+
 	pr_debug("Received PID: %d, uffd: %d\n", lpi->pid, lpi->lpfd.fd);
 
 	if (opts.use_page_server)
