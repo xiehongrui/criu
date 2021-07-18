@@ -779,7 +779,7 @@ static int ud_open(int client, struct lazy_pages_info **_lpi)
 	}
 
 	clock_gettime(CLOCK_REALTIME, &chpt);
-	pr_debug("Start to restore in function %s %s:%d, realtime: %ld %ld\n",
+	pr_info("Start to restore in function %s %s:%d, realtime: %ld %ld\n",
 			__func__, __FILE__, __LINE__,
 			chpt.tv_sec, chpt.tv_nsec);
 
