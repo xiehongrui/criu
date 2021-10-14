@@ -1,1 +1,1 @@
-CFLAGS="-I/home/wtx/criu/.deps-install/include -L/home/wtx/criu/.deps-install/lib" make -j $(nproc)
+CFLAGS="-I${HOME}/criu/.deps-install/include -L${HOME}/criu/.deps-install/lib" make -j $(nproc)
