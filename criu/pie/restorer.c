@@ -720,6 +720,15 @@ static unsigned long restore_mapping(VmaEntry *vma_entry)
 	pr_debug("\tmmap(%"PRIx64" -> %"PRIx64", %x %x %d)\n",
 			vma_entry->start, vma_entry->end,
 			prot, flags, (int)vma_entry->fd);
+
+	if (flags & MAP_ANONYMOUS) {
+		uint64_t page_count;
+		pr_debug("mmap w/ anonymous memory\n");
+		page_count = (vma_entry->end - vma_entry->start) / 4096;
+		pr_debug("page count %ld\n", page_count);
+	} else {
+		pr_debug("mmap w/o anonymous memory\n");
+	}
 	/*
 	 * Should map memory here. Note we map them as
 	 * writable since we're going to restore page
@@ -1563,9 +1572,9 @@ long __export_restore_task(struct task_restore_args *args)
 		ssize_t r;
 
 		while (nr) {
-			pr_debug("Preadv %lx:%d... (%d iovs)\n",
+			pr_debug("Preadv %lx:%d... (%d iovs) from fd %d\n",
 					(unsigned long)iovs->iov_base,
-					(int)iovs->iov_len, nr);
+					(int)iovs->iov_len, nr, args->vma_ios_fd);
 			r = sys_preadv(args->vma_ios_fd, iovs, nr, rio->off);
 			if (r < 0) {
 				pr_err("Can't read pages data (%d)\n", (int)r);
@@ -1573,6 +1582,11 @@ long __export_restore_task(struct task_restore_args *args)
 			}
 
 			pr_debug("`- returned %ld\n", (long)r);
+
+			for (int i = 0; i < nr; i++) {
+				pr_debug("iovs: %p, %ld, %ld\n", iovs[i].iov_base, iovs[i].iov_len, iovs[i].iov_len/4096);
+			}
+
 			/* If the file is open for writing, then it means we should punch holes
 			 * in it. */
 			if (r > 0 && args->auto_dedup) {
