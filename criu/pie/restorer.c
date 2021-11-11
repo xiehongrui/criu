@@ -328,6 +328,19 @@ static int restore_creds(struct thread_creds_args *args, int procfd,
  * to zero.
  */
 
+static inline VmaEntry * lookup(void * pos, struct task_restore_args *args)
+{
+	VmaEntry * vma_entry;
+	int i;
+	for (i = 0; i < args->vmas_n; i++) {
+		vma_entry = args->vmas + i;
+		if ((unsigned long)pos >= vma_entry->start && (unsigned long)pos < vma_entry->end) {
+			return vma_entry;
+		}
+	}
+	return NULL;
+}
+
 static inline int restore_pdeath_sig(struct thread_restore_args *ta)
 {
 	int ret;
@@ -1399,10 +1412,12 @@ int cleanup_current_inotify_events(struct task_restore_args *task_args)
 long __export_restore_task(struct task_restore_args *args)
 {
 	long ret = -1;
-	int i;
-	VmaEntry *vma_entry;
-	unsigned long va;
+	int i, j;
+	ssize_t local_r;
+	VmaEntry *vma_entry, *tmp_entry;
+	unsigned long va, io_size;
 	struct restore_vma_io *rio;
+	loff_t local_offset;
 	struct rt_sigframe *rt_sigframe;
 	struct prctl_mm_map prctl_map;
 	unsigned long new_sp;
@@ -1569,13 +1584,38 @@ long __export_restore_task(struct task_restore_args *args)
 	for (i = 0; i < args->vma_ios_n; i++) {
 		struct iovec *iovs = rio->iovs;
 		int nr = rio->nr_iovs;
-		ssize_t r;
+		ssize_t r = 0;
 
 		while (nr) {
 			pr_debug("Preadv %lx:%d... (%d iovs) from fd %d\n",
 					(unsigned long)iovs->iov_base,
 					(int)iovs->iov_len, nr, args->vma_ios_fd);
-			r = sys_preadv(args->vma_ios_fd, iovs, nr, rio->off);
+			// r = sys_preadv(args->vma_ios_fd, iovs, nr, rio->off);
+			local_offset = rio->off;
+			for (j = 0; j < nr; j++) {
+				void * p = (void *)iovs[j].iov_base;
+				unsigned long end = (unsigned long)p + iovs[j].iov_len;
+				pr_debug("Change preadv to map of iov buffer %d, iov base %lx\n", j, (unsigned long)iovs[j].iov_base);
+				while ((unsigned long)p < end) {
+					tmp_entry = lookup(p, args);
+					io_size = tmp_entry->end < end ? tmp_entry->end : end;
+					io_size -= (long)p;
+
+					if (!vma_entry_is(tmp_entry, VMA_AREA_REGULAR) || (tmp_entry->flags & MAP_GROWSDOWN)) {
+						local_r = sys_pread(args->vma_ios_fd, p, io_size, local_offset);
+						pr_debug("Can't use mmap, still pread, %lx, %ld, %ld\n", (unsigned long)p, io_size, local_offset);
+					}
+					else {
+						sys_munmap(p, io_size);
+						sys_mmap(p, io_size, tmp_entry->prot | PROT_WRITE, (tmp_entry->flags & ~MAP_ANONYMOUS) | MAP_FIXED | MAP_PRIVATE, args->vma_ios_fd, local_offset);
+						local_r = io_size;
+						pr_debug("Use mmap, %lx, %ld, %ld\n", (unsigned long)p, io_size, local_offset);
+					}
+					p += local_r;
+					local_offset += local_r;
+					r += local_r;
+				}
+			}
 			if (r < 0) {
 				pr_err("Can't read pages data (%d)\n", (int)r);
 				goto core_restore_end;
