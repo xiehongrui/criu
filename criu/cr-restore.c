@@ -1908,8 +1908,8 @@ static int restore_task_with_children(void *_arg)
 		kill(getpid(), SIGKILL);
 	}
 
-	if (open_transport_socket())
-		goto err;
+	// if (open_transport_socket())
+	// 	goto err;
 
 	timing_start(TIME_FORK);
 

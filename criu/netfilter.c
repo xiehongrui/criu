@@ -40,10 +40,10 @@ void preload_netfilter_modules(void)
 		fd = -1;
 		pr_perror("failed to open /dev/null, using log fd for net module preload");
 	}
-	cr_system(fd, fd, fd, iptable_cmd_ipv4,
-		(char *[]) { iptable_cmd_ipv4, "-L", "-n", NULL}, 0);
-	cr_system(fd, fd, fd, iptable_cmd_ipv6,
-		(char *[]) { iptable_cmd_ipv6, "-L", "-n", NULL}, 0);
+	// cr_system(fd, fd, fd, iptable_cmd_ipv4,
+	// 	(char *[]) { iptable_cmd_ipv4, "-L", "-n", NULL}, 0);
+	// cr_system(fd, fd, fd, iptable_cmd_ipv6,
+	// 	(char *[]) { iptable_cmd_ipv6, "-L", "-n", NULL}, 0);
 	close_safe(&fd);
 }
 
