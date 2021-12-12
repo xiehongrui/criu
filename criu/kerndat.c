@@ -1095,42 +1095,52 @@ int kerndat_init(void)
 		pr_err("get_task_size failed when initializing kerndat.\n");
 		ret = -1;
 	}
+	pr_info("reached here, %s:%d\n", __FILE__, __LINE__);
 	if (!ret && get_ipv6()) {
 		pr_err("get_ipv6 failed when initializing kerndat.\n");
 		ret = -1;
 	}
+	pr_info("reached here, %s:%d\n", __FILE__, __LINE__);
 	if (!ret && kerndat_loginuid()) {
 		pr_err("kerndat_loginuid failed when initializing kerndat.\n");
 		ret = -1;
 	}
+	pr_info("reached here, %s:%d\n", __FILE__, __LINE__);
 	if (!ret && kerndat_iptables_has_xtlocks()) {
 		pr_err("kerndat_iptables_has_xtlocks failed when initializing kerndat.\n");
 		ret = -1;
 	}
+	pr_info("reached here, %s:%d\n", __FILE__, __LINE__);
 	if (!ret && kerndat_tcp_repair()) {
 		pr_err("kerndat_tcp_repair failed when initializing kerndat.\n");
 		ret = -1;
 	}
+	pr_info("reached here, %s:%d\n", __FILE__, __LINE__);
 	if (!ret && kerndat_compat_restore()) {
 		pr_err("kerndat_compat_restore failed when initializing kerndat.\n");
 		ret = -1;
 	}
+	pr_info("reached here, %s:%d\n", __FILE__, __LINE__);
 	if (!ret && kerndat_tun_netns()) {
 		pr_err("kerndat_tun_netns failed when initializing kerndat.\n");
 		ret = -1;
 	}
+	pr_info("reached here, %s:%d\n", __FILE__, __LINE__);
 	if (!ret && kerndat_socket_unix_file()) {
 		pr_err("kerndat_socket_unix_file failed when initializing kerndat.\n");
 		ret = -1;
 	}
+	pr_info("reached here, %s:%d\n", __FILE__, __LINE__);
 	if (!ret && kerndat_nsid()) {
 		pr_err("kerndat_nsid failed when initializing kerndat.\n");
 		ret = -1;
 	}
-	if (!ret && kerndat_link_nsid()) {
-		pr_err("kerndat_link_nsid failed when initializing kerndat.\n");
-		ret = -1;
-	}
+	pr_info("reached here, %s:%d\n", __FILE__, __LINE__);
+	// if (!ret && kerndat_link_nsid()) {
+	// 	pr_err("kerndat_link_nsid failed when initializing kerndat.\n");
+	// 	ret = -1;
+	// }
+	pr_info("reached here, %s:%d\n", __FILE__, __LINE__);
 	if (!ret && kerndat_has_memfd_create()) {
 		pr_err("kerndat_has_memfd_create failed when initializing kerndat.\n");
 		ret = -1;
